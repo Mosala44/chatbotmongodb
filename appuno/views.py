@@ -10,18 +10,26 @@ from docx.shared import Pt
 from docx.oxml import OxmlElement
 from docx.oxml.ns import qn
 from io import BytesIO
-import matplotlib.pyplot as plt
+from docx.enum.text import WD_PARAGRAPH_ALIGNMENT
+from docx.enum.style import WD_STYLE_TYPE
 import datetime
 from docx.shared import Inches
+import matplotlib.pyplot as plt
+
 
 thresholds = {
     "viscocidad": {"monitoreo": 90, "accion": 90},  # Solo se evalúa acción: >90
+    
     "fe": {"monitoreo": 50, "accion": 100},
     "cu": {"monitoreo": 8, "accion": 15},
     "pb": {"monitoreo": 7, "accion": 10},
     "al": {"monitoreo": 8, "accion": 15},
+    "sn": {"monitoreo": 3, "accion": 5},
+    "cr": {"monitoreo": 2, "accion": 4},
+    "ni": {"monitoreo": 2, "accion": 4},
     "si": {"monitoreo": 30, "accion": 80},
-    "na": {"monitoreo": None, "accion": 1}
+    "na": {"monitoreo": None, "accion": 2},
+    "cfe": {"monitoreo": 50, "accion": 100}
 }
 
 
@@ -79,44 +87,44 @@ def create_camion(request):
 from django.http import JsonResponse
 
 PREGUNTAS = [
-    "Número de camión: ",
-    "Número de muestra: ",
-    "Motor_1: ",
-    "Motor_2: ",
-    "Tipo de pauta: ",
-    "Horas componente: ",
-    "Fecha análisis (dia-mes-año): ",
-    "Cambio de aceite: ",
-    "Lubricant: ",
-    "Horómetro: ",
-    "Fecha de la muestra (dia-mes-año): ",
-    "Viscosidad: ",
-    "Agua %: ",
-    "Cfe: ",
-    "Fe: ",
-    "Cu: ",
-    "Pb: ",
-    "Al: ",
-    "Sn: ",
-    "Ag: ",
-    "Cr: ",
-    "Ni: ",
-    "Mo: ",
-    "Ti: ",
-    "Si: ",
-    "Na: ",
-    "K: ",
-    "B: ",
-    "V: ",
-    "Mg: ",
-    "Ca: ",
-    "P: ",
-    "Zn: ",
-    "Ba: ",
-    "Cd: ",
-    "Li: ",
-    "Mn: ",
-    "Sb: "
+    "número de camión: ",
+    "número de muestra: ",
+    "motor_1: ",
+    "motor_2: ",
+    "tipo de pauta: ",
+    "horas componente: ",
+    "fecha análisis (dia-mes-año): ",
+    "cambio de aceite: ",
+    "lubricant: ",
+    "horómetro: ",
+    "fecha de la muestra (dia-mes-año): ",
+    "viscocidad: ",
+    "agua %: ",
+    "cfe: ",
+    "fe: ",
+    "cu: ",
+    "pb: ",
+    "al: ",
+    "sn: ",
+    "ag: ",
+    "cr: ",
+    "ni: ",
+    "mo: ",
+    "ti: ",
+    "si: ",
+    "na: ",
+    "k: ",
+    "b: ",
+    "v: ",
+    "mg: ",
+    "ca: ",
+    "p: ",
+    "zn: ",
+    "ba: ",
+    "cd: ",
+    "li: ",
+    "mn: ",
+    "sb: "
 ]
 
 def selecciona_camion(request):
@@ -147,6 +155,25 @@ def selecciona_camion(request):
     # Método GET: se muestra la lista de camiones para elegir
     camiones = list(camiones_collection.find({}))
     return render(request, 'selec_cam.html', {'camiones': camiones})
+def reiniciar_chat(request):
+    """
+    Vista para reiniciar la conversación del chat.
+    Conserva el camión seleccionado y borra las respuestas previas,
+    de modo que la siguiente pregunta sea "número de muestra:".
+    """
+    # Recuperar el camión seleccionado desde la sesión
+    camion_numero = request.session.get("selected_camion")
+    if not camion_numero:
+        return JsonResponse({"error": "No hay camión seleccionado"}, status=400)
+    
+    # Reiniciar la conversación conservando el camión seleccionado
+    request.session["analisis_data"] = {"Número de camión:": camion_numero}
+    
+    # Retornar la respuesta inicial: la siguiente pregunta (número de muestra)
+    # Asumiendo que en tu lista de preguntas, "número de camión:" es la primera,
+    # la siguiente (segunda) es "número de muestra:"
+    return JsonResponse({"message": "Chat reiniciado. Por favor, ingrese el número de muestra:"})
+
 
 
 def Chatbot(request): 
@@ -182,44 +209,43 @@ def Chatbot(request):
         try:
             analisis_data = {
                 "camion": {"numero": camion_numero},  # Se usa el camión seleccionado
-                "numero_muestra": session_data.get("Número de muestra: ", ""),
-                "motor_1": session_data.get("Motor_1: ", "false").lower() in ["true", "si", "1"],
-                "motor_2": session_data.get("Motor_2: ", "false").lower() in ["true", "si", "1"],
-                "tipo_pauta": session_data.get("Tipo de pauta: ", ""),
-                "horas_componentes": session_data.get("Horas componente: ", ""),
-                "fecha_analisis": session_data.get("Fecha análisis (dia-mes-año): ", ""),
-                "cambio_aceite": session_data.get("Cambio de aceite: ", ""),
-                "lubricant": session_data.get("Lubricant: ", ""),
-                "horometro": session_data.get("Horómetro: ", ""),
-                "Fecha_muestra": session_data.get("Fecha de la muestra (dia-mes-año): ", ""),
-                "componente": session_data.get("Componente:", ""),
-                "viscocidad": session_data.get("Viscosidad: ", ""),
-                "agua": session_data.get("Agua %: ", ""),
-                "cfe": session_data.get("Cfe: ", ""),
-                "fe": session_data.get("Fe: ", ""),
-                "cu": session_data.get("Cu: ", ""),
-                "pb": session_data.get("Pb: ", ""),
-                "al": session_data.get("Al: ", ""),
-                "sn": session_data.get("Sn: ", ""),
-                "ag": session_data.get("Ag: ", ""),
-                "cr": session_data.get("Cr: ", ""),
-                "ni": session_data.get("Ni: ", ""),
-                "mo": session_data.get("Mo: ", ""),
-                "ti": session_data.get("Ti: ", ""),
-                "si": session_data.get("Si: ", ""),
-                "na": session_data.get("Na: ", ""),
-                "k": session_data.get("K: ", ""),
-                "b": session_data.get("B: ", ""),
-                "v": session_data.get("V: ", ""),
-                "mg": session_data.get("Mg: ", ""),
-                "ca": session_data.get("Ca: ", ""),
-                "p": session_data.get("P: ", ""),
-                "zn": session_data.get("Zn: ", ""),
-                "ba": session_data.get("Ba: ", ""),
-                "cd": session_data.get("Cd: ", ""),
-                "li": session_data.get("Li: ", ""),
-                "mn": session_data.get("Mn: ", ""),
-                "sb": session_data.get("Sb: ", "")
+                "numero_muestra": session_data.get("número de muestra: ", ""),
+                "motor_1": session_data.get("motor_1: ", "false").lower() in ["true", "si", "1"],
+                "motor_2": session_data.get("motor_2: ", "false").lower() in ["true", "si", "1"],
+                "tipo_pauta": session_data.get("tipo de pauta: ", ""),
+                "horas_componentes": session_data.get("horas componente: ", ""),
+                "fecha_analisis": session_data.get("fecha análisis (dia-mes-año): ", ""),
+                "cambio_aceite": session_data.get("cambio de aceite: ", ""),
+                "lubricant": session_data.get("lubricant: ", ""),
+                "horometro": session_data.get("horómetro: ", ""),
+                "Fecha_muestra": session_data.get("fecha de la muestra (dia-mes-año): ", ""),
+                "viscocidad": session_data.get("viscosidad: ", ""),
+                "agua": session_data.get("agua %: ", ""),
+                "cfe": session_data.get("cfe: ", ""),
+                "fe": session_data.get("fe: ", ""),
+                "cu": session_data.get("cu: ", ""),
+                "pb": session_data.get("pb: ", ""),
+                "al": session_data.get("al: ", ""),
+                "sn": session_data.get("sn: ", ""),
+                "ag": session_data.get("ag: ", ""),
+                "cr": session_data.get("cr: ", ""),
+                "ni": session_data.get("ni: ", ""),
+                "mo": session_data.get("mo: ", ""),
+                "ti": session_data.get("ti: ", ""),
+                "si": session_data.get("si: ", ""),
+                "na": session_data.get("na: ", ""),
+                "k": session_data.get("k: ", ""),
+                "b": session_data.get("b: ", ""),
+                "v": session_data.get("v: ", ""),
+                "mg": session_data.get("mg: ", ""),
+                "ca": session_data.get("ca: ", ""),
+                "p": session_data.get("p: ", ""),
+                "zn": session_data.get("zn: ", ""),
+                "ba": session_data.get("ba: ", ""),
+                "cd": session_data.get("cd: ", ""),
+                "li": session_data.get("li: ", ""),
+                "mn": session_data.get("mn: ", ""),
+                "sb": session_data.get("b: ", "")
             }
 
             print("🚚 Datos a guardar en MongoDB:", analisis_data)
@@ -227,12 +253,16 @@ def Chatbot(request):
             def evaluar_condicion(elemento, valor):
                  rangos = {
                      "viscocidad": (90, 90),  # Mismo valor para monitoreo y acción si no hay rango definido
+                     "cfe": (50, 100),
                      "fe": (50, 100),
                      "cu": (8, 15),
                      "pb": (7, 10),
                      "al": (8, 15),
+                     'sn': (3, 5),
+                     'cr': (2, 4),
+                     'ni': (2, 4),
                      "si": (30, 80),
-                     "na": (1, 1),  # Solo tiene NORMAL y ACCIÓN REQUERIDA
+                     "na": (2, 2),  # Solo tiene NORMAL y ACCIÓN REQUERIDA
                  }
                  if elemento in rangos:
                      monitoreo, accion = rangos[elemento]
@@ -243,7 +273,7 @@ def Chatbot(request):
                  return "NORMAL"
              
              # Evaluar todos los elementos convirtiendo a float
-            estados = {elem: evaluar_condicion(elem, float(analisis_data.get(elem, 0) or 0)) for elem in ["viscocidad", "fe", "cu", "pb", "al", "si", "na"]}
+            estados = {elem: evaluar_condicion(elem, float(analisis_data.get(elem, 0) or 0)) for elem in ["viscocidad", "fe", "cu", "pb", "al", "sn","cr", "ni", "si", "na"]}
              
              # Determinar la condición global del camión
             prioridad = {"NORMAL": 0, "MONITOREO": 1, "ACCIÓN REQUERIDA": 2}
@@ -275,17 +305,19 @@ def to_float(val):
     except:
         return 0.0
 
-
 def evaluar_condicion(elemento, valor):
-
     rangos = {
-        "viscocidad": (90, 90),  # Sin rango de monitoreo, solo NORMAL y ACCIÓN REQUERIDA
+        "viscocidad": (90, 90),  # Mismo valor para monitoreo y acción si no hay rango definido
+        "cfe": (50, 100),
         "fe": (50, 100),
         "cu": (8, 15),
         "pb": (7, 10),
         "al": (8, 15),
+        'sn': (3, 5),
+        'cr': (2, 4),
+        'ni': (2, 4),
         "si": (30, 80),
-        "na": (1, 1),  # Solo tiene NORMAL y ACCIÓN REQUERIDA
+        "na": (2, 2),  # Solo tiene NORMAL y ACCIÓN REQUERIDA
     }
     if elemento in rangos:
         monitoreo, accion = rangos[elemento]
@@ -295,12 +327,69 @@ def evaluar_condicion(elemento, valor):
             return "MONITOREO"
     return "NORMAL"
 
+# Evaluar todos los elementos usando to_float para la conversión
+def generar_recomendaciones(analisis_m1, analisis_m2, estados):
+    recomendaciones = []
+
+    # Verificar si el camión tiene análisis en ambos motores
+    if not analisis_m1 or not analisis_m2:
+        recomendaciones.append("Sin registro en planilla de análisis.")
+
+    # Verificar actualización de horómetro
+    horas_m1 = analisis_m1.get("horas_componentes", "no hay registros") if analisis_m1 else "no hay registros"
+    horas_m2 = analisis_m2.get("horas_componentes", "no hay registros") if analisis_m2 else "no hay registros"
+
+    actualizar_horometro = []
+    if horas_m1 in ["0", "no hay registros"]:
+        actualizar_horometro.append("Motor 1")
+    if horas_m2 in ["0", "no hay registros"]:
+        actualizar_horometro.append("Motor 2")
+
+    if actualizar_horometro:
+        recomendaciones.append(f"Actualizar horómetro ({', '.join(actualizar_horometro)})")
+
+    # Verificar Silicio (Si) en MONITOREO o ACCIÓN REQUERIDA
+    if estados.get("si") in ["MONITOREO", "ACCIÓN REQUERIDA"]:
+        recomendaciones.append(
+            "Revisar motivo de incremento de sílices, tales como revisar sellos de tapas de inspección de piñón y llenado de aceite, "
+            "además de realizar chequeo de mangueras de respiraderos de MT."
+        )
+
+    # Verificar si hay al menos 2 elementos en MONITOREO
+    elementos_monitoreo = [elem for elem, estado in estados.items() if estado == "MONITOREO"]
+    if len(elementos_monitoreo) >= 2:
+        recomendaciones.extend([
+            "Mantener el camión en monitoreo.",
+            "Realizar chequeo y registro fotográfico del tapón magnético del cárter.",
+            "Realizar chequeo y registro fotográfico del piñón solar y dientes de los planetarios.",
+            "Revisar el estado del filtro de respiradero.",
+            "Informar supervisión en caso de material escamoso o daños en piñones.",
+            "Realizar una diálisis al aceite."
+        ])
+
+    # Verificar si hay al menos 2 elementos en ACCIÓN REQUERIDA
+    elementos_accion = [elem for elem, estado in estados.items() if estado == "ACCIÓN REQUERIDA"]
+    if len(elementos_accion) >= 2:
+        recomendaciones.extend([
+            "Realizar acciones correctivas inmediatas.",
+            "Chequeo y registro fotográfico del tapón magnético y componentes internos.",
+            "Drenado, flushing, limpieza exhaustiva y cambio del aceite.",
+            "Si hay daños en piñón solar, realizar su cambio y torqueo correspondiente.",
+            "Medir backlash y end play de los planetarios, informar anomalías."
+        ])
+
+    # Si todas las condiciones fueron "NORMAL", no se generan recomendaciones
+    if all(estado == "NORMAL" for estado in estados.values()):
+        return ["No se generan recomendaciones."]
+
+    return recomendaciones
+
+
 def generar_informe(request):
     from docx import Document
     from docx.shared import Inches, Pt
     from django.http import HttpResponse
-    import datetime
-    import matplotlib.pyplot as plt
+    from datetime import datetime
     from io import BytesIO
 
     # Obtener todos los camiones de la colección "camion"
@@ -315,18 +404,99 @@ def generar_informe(request):
     doc = Document()
     
     # Encabezado principal
-    table_enc = doc.add_table(rows=2, cols=3)
+    header = doc.sections[0].header
+    
+    # Agregar la tabla al encabezado (3 filas x 3 columnas)
+    table_enc = header.add_table(rows=2, cols=3, width=Inches(6))
     table_enc.style = 'Table Grid'
+    
+    # Ruta de la imagen
     image_path = "C:/Users/Andres Villarroel/chatbotai2/static/images/image.png"
+    
+    # Insertar la imagen en la celda (0,0)
     cell_imagen = table_enc.cell(0, 0)
     paragraph = cell_imagen.paragraphs[0]
     run = paragraph.add_run()
     run.add_picture(image_path, width=Inches(1))
+    
+    # Agregar el texto en la primera fila
     table_enc.cell(0, 1).text = "Centro de Reparación de Componentes Antofagasta"
     table_enc.cell(0, 2).text = "ANÁLISIS SEMANAL DE ACEITE"
-    table_enc.cell(1, 0).merge(table_enc.cell(1, 2))
-    doc.add_paragraph("\n")
     
+    # Segunda fila: Nueva información agregada
+    # 1️⃣ Fecha de generación del informe
+    fecha_generacion = datetime.now().strftime("%d-%m-%Y")  # Formato DD-MM-YYYY
+    table_enc.cell(1, 0).text = f"Fecha: {fecha_generacion}"
+    
+    # 2️⃣ Título "Reporte de análisis Muestra de Aceite" en negrita
+    cell_titulo = table_enc.cell(1, 1)
+    p_titulo = cell_titulo.paragraphs[0]
+    run_titulo = p_titulo.add_run("Reporte de análisis Muestra de Aceite")
+    run_titulo.bold = True  # Texto en negrita
+    
+    # 3️⃣ Índice de páginas dinámico (esto se actualizará después)
+    cell_paginas = table_enc.cell(1, 2)
+    paginacion_paragraph = cell_paginas.paragraphs[0]
+    
+    # Campo para mostrar la página actual (X)
+    field_page = OxmlElement('w:fldSimple')
+    field_page.set(qn('w:instr'), 'PAGE')
+    run_page = OxmlElement('w:r')
+    text_page = OxmlElement('w:t')
+    text_page.text = "X"  # Se reemplazará con el número real de página
+    run_page.append(text_page)
+    field_page.append(run_page)
+    paginacion_paragraph._element.append(field_page)
+    
+    # Agregar " of "
+    paginacion_paragraph.add_run(" of ")
+    
+    # Campo para mostrar el total de páginas (Y)
+    field_numpages = OxmlElement('w:fldSimple')
+    field_numpages.set(qn('w:instr'), 'NUMPAGES')
+    run_numpages = OxmlElement('w:r')
+    text_numpages = OxmlElement('w:t')
+    text_numpages.text = "Y"  # Se reemplazará con el total de páginas
+    run_numpages.append(text_numpages)
+    field_numpages.append(run_numpages)
+    paginacion_paragraph._element.append(field_numpages)
+    
+
+    doc.add_paragraph("\n")
+
+    
+# Combinar la tercera fila en una sola celda
+   
+    
+    # Agregar tabla de encabezado con Cliente y Fecha
+    tabla_encabezado = doc.add_table(rows=1, cols=2)
+    tabla_encabezado.style = 'Table Grid'
+    
+    # Configurar primera celda (Cliente)
+    celda_cliente = tabla_encabezado.cell(0, 0)
+    p_cliente = celda_cliente.paragraphs[0]
+    run_cliente = p_cliente.add_run("Cliente: ")
+    run_cliente.bold = True
+    run_cliente.font.size = Pt(12)
+    p_cliente.add_run("__________________________")  # Espacio para escribir
+    
+    # Configurar segunda celda (Fecha)
+    celda_fecha = tabla_encabezado.cell(0, 1)
+    p_fecha = celda_fecha.paragraphs[0]
+    run_fecha = p_fecha.add_run("Fecha: ")
+    run_fecha.bold = True
+    run_fecha.font.size = Pt(12)
+    p_fecha.add_run("__________________________")  # Espacio para escribir
+    
+    # Alinear tabla al centro
+    for row in tabla_encabezado.rows:
+        for cell in row.cells:
+            cell.paragraphs[0].alignment = WD_PARAGRAPH_ALIGNMENT.LEFT
+    
+    # Agregar espacio después del encabezado
+    doc.add_paragraph("\n")
+
+
     # Tabla resumen
     table_datos = doc.add_table(rows=1, cols=8)
     table_datos.style = 'Table Grid'
@@ -342,7 +512,7 @@ def generar_informe(request):
 
     datos_collection = db["datos"]
     critical_camiones = []
-    elementos = ["viscocidad", "fe", "cu", "pb", "al", "si", "na"]
+    elementos = ["viscocidad", "cfe", "fe", "cu", "pb", "al", "sn", "cr", "ni", "si", "na"]
     prioridad = {"NORMAL": 0, "MONITOREO": 1, "ACCIÓN REQUERIDA": 2}
 
     for camion in camiones:
@@ -379,11 +549,11 @@ def generar_informe(request):
 
         # Datos comunes
         fecha_m1 = analisis_m1.get("fecha_analisis", "") if analisis_m1 else ""
-        horometro_m1 = str(analisis_m1.get("horometro", "N/A")) if analisis_m1 else "N/A"
+        horas_componentes_m1 = str(analisis_m1.get("horas_componentes", "N/A")) if analisis_m1 else "N/A"
         nro_muestra_m1 = analisis_m1.get("numero_muestra", "") if analisis_m1 else ""
         
         fecha_m2 = analisis_m2.get("fecha_analisis", "") if analisis_m2 else ""
-        horometro_m2 = str(analisis_m2.get("horometro", "N/A")) if analisis_m2 else "N/A"
+        horas_componentes_m2 = str(analisis_m2.get("horas_componentes", "N/A")) if analisis_m2 else "N/A"
         nro_muestra_m2 = analisis_m2.get("numero_muestra", "") if analisis_m2 else ""
         
         fecha_comb = f"{fecha_m1} / {fecha_m2}" if fecha_m1 and fecha_m2 else (fecha_m1 or fecha_m2)
@@ -401,18 +571,19 @@ def generar_informe(request):
                 obs_items.append(f"Motor 2: {elem.upper()} ({analisis_m2.get(elem.lower(), 0)})")
         
         observacion_global = ", ".join(obs_items)
-        recomendaciones = "actualizar horometro"
+        estados = {elem: max(estados_m1[elem], estados_m2[elem], key=lambda x: prioridad[x]) for elem in elementos}
+        recomendaciones = generar_recomendaciones(analisis_m1, analisis_m2, estados)
         
         # Agregar fila a la tabla
         row_cells = table_datos.add_row().cells
         row_cells[0].text = str(numero)
         row_cells[1].text = nro_muestra_comb
         row_cells[2].text = fecha_comb
-        row_cells[3].text = horometro_m1
-        row_cells[4].text = horometro_m2
+        row_cells[3].text = horas_componentes_m1
+        row_cells[4].text = horas_componentes_m2
         row_cells[5].text = estado_global
         row_cells[6].text = observacion_global
-        row_cells[7].text = recomendaciones
+        row_cells[7].text = "recomendaciones en graficos"
 
         if estado_global.upper() == "MONITOREO":
             set_row_shading(row_cells, "FFFF00")
@@ -424,8 +595,8 @@ def generar_informe(request):
                 "numero": numero,
                 "estado_m1": estado_final_m1,
                 "estado_m2": estado_final_m2,
-                "horometro_m1": horometro_m1,
-                "horometro_m2": horometro_m2,
+                "horas_componentes_m1": horas_componentes_m1,
+                "horas_componentes_m2": horas_componentes_m2,
                 "params": {
                     elem: {
                         "motor": motor_origen_param[elem],
@@ -455,81 +626,189 @@ def generar_informe(request):
         'axes.titlesize': 9,
         'axes.labelsize': 8
     })
+    recomendaciones_por_motor = {}  # Diccionario para almacenar recomendaciones por motor
 
     for camion_data in critical_camiones:
-        numero = camion_data["numero"]
-        params_data = camion_data["params"]
+       numero = camion_data["numero"]
+       params_data = camion_data["params"]
+   
+       analisis_records = list(datos_collection.find({"camion.numero": numero})
+                               .sort("fecha_analisis", 1).limit(5))
+       if not analisis_records:
+           continue
+   
+       # Verificar si el camión tiene parámetros que generen gráficos (por ejemplo, "fe" o "si" en estado MONITOREO o ACCIÓN REQUERIDA)
+       tiene_graficos = any(
+           param.lower() in [ "cfe", "fe", "si", "cu", "cr", "ni"] and param_info["estado"] in ["MONITOREO", "ACCIÓN REQUERIDA"]
+           for param, param_info in params_data.items()
+       )
+       # Si no hay gráficos para generar, se salta todo el bloque de generación
+       if not tiene_graficos:
+           continue
+   
+       # Procesar las fechas y reordenarlas
+       fechas = [rec.get("fecha_analisis", "")[:10] for rec in analisis_records[:5]]
+       fechas.reverse()
+   
+       # Crear página y título del análisis
+       doc.add_page_break()
+       titulo = doc.add_paragraph()
+       titulo.alignment = WD_PARAGRAPH_ALIGNMENT.CENTER  # Centrar texto
+       run = titulo.add_run(f"ANÁLISIS DEL CAMIÓN {numero}")
+       run.bold = True
+       run.font.size = Pt(14)
+   
+       # Crear tabla de información de motores (solo se crea si hay gráficos a generar)
+       tabla_info = doc.add_table(rows=4, cols=2)
+       tabla_info.style = 'Table Grid'
+   
+       # Motor 1
+       celda = tabla_info.cell(0, 0)
+       celda.text = "Motor 1"
+       celda = tabla_info.cell(1, 0)
+       celda.text = f"N° Serie: {motor_info.get(numero, {}).get('MT1', 'N/A')}"
+       celda = tabla_info.cell(2, 0)
+       celda.text = f"Estado: {camion_data['estado_m1']}"
+       celda = tabla_info.cell(3, 0)
+       horas_componentes_m1 = (camion_data['horas_componentes_m1']
+                                if camion_data['horas_componentes_m1'] not in ['N/A', 'Sin registro', '0', 'no hay registros']
+                                else 'Actualizar horometro')
+       celda.text = f"Horómetro: {horas_componentes_m1} hrs"
+   
+       # Motor 2
+       celda = tabla_info.cell(0, 1)
+       celda.text = "Motor 2"
+       celda = tabla_info.cell(1, 1)
+       celda.text = f"N° Serie: {motor_info.get(numero, {}).get('MT2', 'N/A')}"
+       celda = tabla_info.cell(2, 1)
+       celda.text = f"Estado: {camion_data['estado_m2']}"
+       celda = tabla_info.cell(3, 1)
+       horas_componentes_m2 = (camion_data['horas_componentes_m2']
+                                if camion_data['horas_componentes_m2'] not in ['N/A', 'Sin registro', '0', 'no hay registros']
+                                else 'Actualizar horometro')
+       celda.text = f"Horómetro: {horas_componentes_m2} hrs"
+   
+       # Resaltar motor afectado (se selecciona el primero que cumpla la condición en los parámetros)
+       motor_afectado = None
+       for param, param_info in params_data.items():
+           if param_info["estado"] in ["MONITOREO", "ACCIÓN REQUERIDA"]:
+               motor_afectado = param_info["motor"]
+               break
+       if motor_afectado:
+           motor_celda = tabla_info.cell(0, motor_afectado - 1)
+           estado_celda = tabla_info.cell(2, motor_afectado - 1)
+           color = "FFFF00" if camion_data[f"estado_m{motor_afectado}"] == "MONITOREO" else "FF0000"
+           set_cell_shading(motor_celda, color)
+           set_cell_shading(estado_celda, color)
+   
+       # Diccionario para controlar la generación única de gráficos de CFE por motor
+   
+       # Iterar sobre cada parámetro que cumpla la condición para generar gráficos
+       for param, param_info in params_data.items():
+           if param.lower() in ["cfe", "fe", "si", "cu", "cr", "ni"] and param_info["estado"] in ["MONITOREO", "ACCIÓN REQUERIDA"]:
+               motor_origen = param_info["motor"]
+   
+               # Generar gráfico para el parámetro (FE o SI)
+               valores = [to_float(rec.get(param.lower(), 0)) for rec in analisis_records[:5]]
+               valores.reverse()
+               fig, ax = plt.subplots(figsize=(6, 3))
+               ax.plot(fechas, valores, marker='o', linewidth=1, label=param.upper())
+               
+               # Líneas de umbral, si existen
+               accion = thresholds.get(param.lower(), {}).get("accion")
+               monitoreo = thresholds.get(param.lower(), {}).get("monitoreo")
+               if accion is not None:
+                   ax.axhline(y=accion, color='red', linestyle='--', label="Acción Requerida")
+               if monitoreo is not None:
+                   ax.axhline(y=monitoreo, color='yellow', linestyle='--', label="Monitoreo")
+               
+               ax.set_title(f"Tendencia de {param.upper()} (Motor {motor_origen})")
+               ax.legend(loc='upper left', prop={'size': 8})
+               ax.grid(True, linestyle=':')
+               plt.xticks(rotation=45)
+               plt.tight_layout()
+   
+               img_stream = BytesIO()
+               plt.savefig(img_stream, format='png', dpi=150)
+               plt.close()
+               doc.add_picture(img_stream, width=Inches(5))
+   
+              # Para el parámetro de silicio, agregar recomendaciones debajo del gráfico
+               if param.lower() == "si":
+                    doc.add_paragraph(
+                        "En caso de continuar la condición o incrementar los niveles de las partículas silicio, se recomienda realizar las siguientes acciones:",
+                        style="Heading3"
+                    )
+                    recomendaciones_silicio = [
+                        "- Realizar micro filtrado y/o cambio de aceite según plan de mantenimiento.",
+                        "- Realizar chequeo de tapa de llenado de aceite de cárter.",
+                        "- Realizar chequeo de tapa de inspección planetarios.",
+                        "- Realizar chequeo de mangueras y abrazaderas de respiradero.",
+                        "- Revisar el estado y la fecha del último cambio del filtro de respiradero del MT.",
+                        "- Realizar chequeo y registro fotográfico del tapón magnético del Carter.",
+                        "- Realizar chequeo y registro fotográfico del piñón solar y los dientes de los planetarios.",
+                        "- Se recomienda realizar metrología y/o cambio de piñón solar por horas de operación.",
+                        "- Según inspección realizar cambio del piñón solar por horas de operación.",
+                        "- Se recomienda programar una medición de Backlash y EndPlay."
+                    ]
+                    for rec in recomendaciones_silicio:
+                        doc.add_paragraph(rec, style="List Bullet")
+               elif param.lower() == "fe":
+                    doc.add_paragraph(
+                        "En caso de continuar la condición o incrementar los niveles de las partículas fierro o ferromagnéticas, se recomienda realizar las siguientes acciones:",
+                        style="Heading3"
+                    )
+                    recomendaciones_fierro = [
+                        "- Realizar micro filtrado y/o cambio de aceite según plan de mantenimiento.",
+                        "- Realizar chequeo y registro fotográfico del tapón magnético del Carter.",
+                        "- Realizar chequeo y registro fotográfico del piñón solar y los dientes de los planetarios.",
+                        "- Se recomienda programar una medición de Backlash y EndPlay.",
+                        "- Según inspección realizar cambio del piñón solar por horas de operación.",
+                        "- Se recomienda programar una medición de Backlash y EndPlay."
+                    ]
+                    for rec in recomendaciones_fierro:
+                        doc.add_paragraph(rec, style="List Bullet")
+               elif param.lower() == "cfe":
+                    doc.add_paragraph(
+                        "En caso de continuar la condición o incrementar los niveles de las partículas fierro o ferromagnéticas, se recomienda realizar las siguientes acciones:",
+                        style="Heading3"
+                    )
+                    recomendaciones_cfe= [
+                        "En caso de continuar la condición o incrementar los niveles de las partículas ferromagnéticas, se recomienda realizar las siguientes acciones:",
+                        "- Realizar micro filtrado y/o cambio de aceite según plan de mantenimiento.",
+                        "- Realizar chequeo y registro fotográfico del tapón magnético del Carter.",
+                        "- Realizar chequeo y registro fotográfico del piñón solar y los dientes de los planetarios.",
+                        "- Se recomienda programar una medición de Backlash y EndPlay. "
+
+                    ]
+                    for rec in recomendaciones_cfe:
+                        doc.add_paragraph(rec, style="List Bullet")
+                
+   
+               # Generar el gráfico de CFE para el motor, si aún no se ha generado
+               # Dentro del bucle de parámetros en la sección de gráficos:
+
+
+        # Generar gráfico de CFE asociado al mismo motor (solo si no se ha generado)
+   
+
+            
+                    # Evitar duplicados
+
+
+
+    # Al finalizar la iteración de parámetros, agregar un único bloque de recomendaciones por motor
+    for motor_numero, recomendaciones in recomendaciones_por_motor.items():
+        if recomendaciones:
+            # Agregar título único para las recomendaciones de este motor
+            doc.add_paragraph(f"\nRecomendaciones específicas para Motor {motor_numero}:", style="Heading2")
+            # Eliminar duplicados (si los hubiera)
+            recomendaciones_unicas = list(dict.fromkeys(recomendaciones))
+            for recomendacion in recomendaciones_unicas:
+                doc.add_paragraph(f"• {recomendacion}", style="List Bullet")
+
         
-        analisis_records = list(datos_collection.find({"camion.numero": numero})
-                            .sort("fecha_analisis", 1).limit(5))
-        if not analisis_records:
-            continue
-            
-        fechas = [rec.get("fecha_analisis", "")[:10] for rec in analisis_records[:5]]
-        fechas.reverse()
 
-        for param, param_info in params_data.items():
-            motor_origen = param_info["motor"]
-            estado_motor = camion_data[f"estado_m{motor_origen}"]
-            
-            doc.add_page_break()
-            tabla_info = doc.add_table(rows=4, cols=2)
-            tabla_info.style = 'Table Grid'
-            
-            # Motor 1
-            celda = tabla_info.cell(0, 0)
-            celda.text = f"Motor 1"
-            celda = tabla_info.cell(1, 0)
-            celda.text = f"N° Serie: {motor_info.get(numero, {}).get('MT1', 'N/A')}"
-            celda = tabla_info.cell(2, 0)
-            celda.text = f"Estado: {camion_data['estado_m1']}"
-            celda = tabla_info.cell(3, 0)
-            horometro = camion_data['horometro_m1'] if camion_data['horometro_m1'] not in ['N/A', 'Sin registro'] else 'Actualizar horometro'
-            celda.text = f"Horómetro: {horometro} hrs"
-
-            # Motor 2
-            celda = tabla_info.cell(0, 1)
-            celda.text = f"Motor 2"
-            celda = tabla_info.cell(1, 1)
-            celda.text = f"N° Serie: {motor_info.get(numero, {}).get('MT2', 'N/A')}"
-            celda = tabla_info.cell(2, 1)
-            celda.text = f"Estado: {camion_data['estado_m2']}"
-            celda = tabla_info.cell(3, 1)
-            horometro = camion_data['horometro_m2'] if camion_data['horometro_m2'] not in ['N/A', 'Sin registro'] else 'Actualizar horometro'
-            celda.text = f"Horómetro: {horometro} hrs"
-
-            # Resaltar motor afectado
-            motor_celda = tabla_info.cell(0, motor_origen - 1)
-            estado_celda = tabla_info.cell(2, motor_origen - 1)
-            color = "FFFF00" if estado_motor == "MONITOREO" else "FF0000"
-            set_cell_shading(motor_celda, color)
-            set_cell_shading(estado_celda, color)
-
-            # Configurar gráfico
-            valores = [to_float(rec.get(param.lower(), 0)) for rec in analisis_records[:5]]
-            valores.reverse()
-
-            fig, ax = plt.subplots(figsize=(6, 3))
-            ax.plot(fechas, valores, marker='o', linewidth=1, label=param.upper())
-
-            accion = thresholds.get(param.lower(), {}).get("accion")
-            monitoreo = thresholds.get(param.lower(), {}).get("monitoreo")
-            
-            if accion is not None:
-                ax.axhline(y=accion, color='red', linestyle='--', label="Acción Requerida")
-            if monitoreo is not None:
-                ax.axhline(y=monitoreo, color='yellow', linestyle='--', label="Monitoreo")
-
-            ax.set_title(f"Tendencia de {param.upper()} (Motor {motor_origen})")
-            ax.legend(loc='upper left', prop={'size': 8})
-            ax.grid(True, linestyle=':')
-            plt.xticks(rotation=45)
-            plt.tight_layout()
-
-            img_stream = BytesIO()
-            plt.savefig(img_stream, format='png', dpi=150)
-            plt.close()
-            doc.add_picture(img_stream, width=Inches(5))
 
     for row in table_datos.rows[1:]:
         for cell in row.cells:

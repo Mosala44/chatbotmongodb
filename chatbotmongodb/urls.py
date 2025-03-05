@@ -15,7 +15,7 @@ Including another URLconf
 """
 from django.contrib import admin
 from django.urls import path
-from appuno.views import lista_camiones, create_camion, Chatbot, index, selecciona_camion, generar_informe
+from appuno.views import lista_camiones, create_camion, Chatbot, index, selecciona_camion, generar_informe, reiniciar_chat
 
 urlpatterns = [
     path('admin/', admin.site.urls),
@@ -24,7 +24,9 @@ urlpatterns = [
     path("chatbot/", Chatbot, name="Chatbot"),
     path('cht/', index, name= "cht"),
     path('', selecciona_camion, name='selecciona_camion'),
-    path('descargar/', generar_informe, name= 'generar_informe')
+    path('descargar/', generar_informe, name= 'generar_informe'),
+    path('reiniciar_chat/', reiniciar_chat, name='reiniciar_chat'),
+
      
 
 ]

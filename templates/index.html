@@ -110,122 +110,102 @@
         
     
 
-    <script>
-        document.getElementById('refreshBtn').addEventListener('click', () => {
-            location.reload(); // Recarga la página
-          });
-        ///
-        document.addEventListener('DOMContentLoaded', () => {
-            const chatMessages = document.getElementById("chat-messages");
-            const chatForm = document.getElementById("chat-form");
-            const userInputElement = document.getElementById("user_input");
-            const resetButton = document.getElementById("reset-chat");
-        
-            // Función para obtener el token CSRF
-            function getCSRFToken() {
-                const cookieValue = document.cookie
-                    .split('; ')
-                    .find(row => row.startsWith('csrftoken='))
-                    ?.split('=')[1];
-                console.log('CSRF Token:', cookieValue);  // Verifica si el CSRF Token es válido
-                return cookieValue || document.querySelector('[name=csrfmiddlewaretoken]')?.value;
-            }
-        
-              // ✅ Enviar mensaje al chatbot
-    chatForm.onsubmit = async function(event) {
-        event.preventDefault();
-        const user_input = userInputElement.value.trim();
-        if (!user_input) return; 
-
-        // Agregar el mensaje del usuario al chat
-        const userMessage = document.createElement("p");
-        userMessage.innerHTML = `<strong>Tú:</strong> ${user_input}`;
-        userMessage.style.textAlign = "right";
-        chatMessages.appendChild(userMessage);
-        chatMessages.scrollTop = chatMessages.scrollHeight;
-
-        try {
-            const response = await fetch("/chatbot/", { 
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/x-www-form-urlencoded",
-                    "X-CSRFToken": getCSRFToken()
-                },
-                body: `user_input=${encodeURIComponent(user_input)}`
-            });
-
-            if (!response.ok) throw new Error(`HTTP error! Status: ${response.status}`);
-            const data = await response.json();
-
-            // Agregar el mensaje del chatbot al chat
-            const botMessage = document.createElement("p");
-            botMessage.innerHTML = `<strong>Chatbot:</strong> ${data.message}`;
-            chatMessages.appendChild(botMessage);
-            chatMessages.scrollTop = chatMessages.scrollHeight;
-        } catch (error) {
-            console.error("Error en la solicitud:", error);
-            const errorMessage = document.createElement("p");
-            errorMessage.innerHTML = `<strong>Chatbot:</strong> Error al procesar la respuesta.`;
-            errorMessage.style.color = "red";
-            chatMessages.appendChild(errorMessage);
-        }
-
-        userInputElement.value = ""; // Limpiar input
-    };
-
-    // ✅ Función para reiniciar el chat
-    resetButton.onclick = async function() {
-        try {
-            const response = await fetch("/chatbot/", {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/x-www-form-urlencoded",
-                    "X-CSRFToken": getCSRFToken()
-                },
-                body: `user_input=reiniciar_chat`
-            });
-
-            const data = await response.json();
-            chatMessages.innerHTML = `<p><strong>Chatbot:</strong> ${data.message}</p>`;
-        } catch (error) {
-            console.error("Error al reiniciar el chat:", error);
-        }
-    };
-});
-document.getElementById('informe-form').addEventListener('submit', async function(event) {
-    event.preventDefault(); // Evitar el envío tradicional del formulario
-    const form = event.target;
-    const formData = new FormData(form);
-    
-    try {
-        // Ajusta la URL según corresponda a tu endpoint que genera el informe
-        const response = await fetch(form.action, {
-            method: form.method, // Por ejemplo, "POST"
-            body: formData
-        });
-        
-        if (!response.ok) {
-            throw new Error(`Error en la respuesta: ${response.statusText}`);
-        }
-        
-        // Obtener el blob del archivo
-        const blob = await response.blob();
-        // Crear un URL temporal para el blob
-        const url = window.URL.createObjectURL(blob);
-        // Crear un enlace y simular el clic para descargar el archivo
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = 'informe_generado.docx'; // Nombre del archivo descargado
-        document.body.appendChild(a);
-        a.click();
-        a.remove();
-        // Revocar el objeto URL
-        window.URL.revokeObjectURL(url);
-    } catch (error) {
-        console.error("Error al descargar el informe:", error);
-    }
-});
-</script>
+                <script>
+                    // Función para obtener el token CSRF desde las cookies
+                    function getCookie(name) {
+                        let cookieValue = null;
+                        if (document.cookie && document.cookie !== '') {
+                            const cookies = document.cookie.split(';');
+                            for (let cookie of cookies) {
+                                cookie = cookie.trim();
+                                if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                                    break;
+                                }
+                            }
+                        }
+                        return cookieValue;
+                    }
+                
+                    document.addEventListener('DOMContentLoaded', () => {
+                        const chatMessages = document.getElementById("chat-messages");
+                        const chatForm = document.getElementById("chat-form");
+                        const userInputElement = document.getElementById("user_input");
+                        const resetButton = document.getElementById("reset-chat");
+                
+                        // Enviar mensaje al chatbot
+                        chatForm.onsubmit = async function(event) {
+                            event.preventDefault();
+                            const user_input = userInputElement.value.trim();
+                            if (!user_input) return; 
+                
+                            // Agregar el mensaje del usuario al chat
+                            const userMessage = document.createElement("p");
+                            userMessage.innerHTML = `<strong>Tú:</strong> ${user_input}`;
+                            userMessage.style.textAlign = "right";
+                            chatMessages.appendChild(userMessage);
+                            chatMessages.scrollTop = chatMessages.scrollHeight;
+                
+                            try {
+                                const response = await fetch("/chatbot/", { 
+                                    method: "POST",
+                                    headers: {
+                                        "Content-Type": "application/x-www-form-urlencoded",
+                                        "X-CSRFToken": getCookie("csrftoken")
+                                    },
+                                    body: `user_input=${encodeURIComponent(user_input)}`
+                                });
+                
+                                if (!response.ok) throw new Error(`HTTP error! Status: ${response.status}`);
+                                const data = await response.json();
+                
+                                // Agregar el mensaje del chatbot al chat
+                                const botMessage = document.createElement("p");
+                                botMessage.innerHTML = `<strong>Chatbot:</strong> ${data.message}`;
+                                chatMessages.appendChild(botMessage);
+                                chatMessages.scrollTop = chatMessages.scrollHeight;
+                            } catch (error) {
+                                console.error("Error en la solicitud:", error);
+                                const errorMessage = document.createElement("p");
+                                errorMessage.innerHTML = `<strong>Chatbot:</strong> Error al procesar la respuesta.`;
+                                errorMessage.style.color = "red";
+                                chatMessages.appendChild(errorMessage);
+                            }
+                
+                            userInputElement.value = ""; // Limpiar input
+                        };
+                
+                        // Función para reiniciar el chat
+                        document.getElementById("reset-chat").addEventListener("click", function() {
+                            fetch("/reiniciar_chat/", {
+                                method: "POST",
+                                headers: {
+                                    "X-CSRFToken": getCookie("csrftoken"),
+                                    "Content-Type": "application/json"
+                                }
+                            })
+                            .then(response => response.json())
+                            .then(data => {
+                                
+                                const chatMessages = document.getElementById("chat-messages");
+                                chatMessages.innerHTML = "";  // Borra todo el chat
+                        
+                                // Volver a agregar el mensaje inicial
+                                const botMessage = document.createElement("p");
+                                botMessage.innerHTML = `<strong>Chatbot:</strong> ¡Hola! Comencemos con el análisis de aceite, ingrese número de muestra.`;
+                                chatMessages.appendChild(botMessage);
+                            })
+                            .catch(error => console.error("Error:", error));
+                        });
+                        
+                        
+                        // Ejemplo: botón para recargar la página (si lo necesitas)
+                        document.getElementById('refreshBtn').addEventListener('click', () => {
+                            location.reload(); // Recarga la página
+                        });
+                    });
+                </script>
+                
 
 </body>
 </html>
